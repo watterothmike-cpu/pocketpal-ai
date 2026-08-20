@@ -190,6 +190,26 @@ describe('importUtils', () => {
         expect(result).toBe(2);
       });
 
+      it('should recover pals from the legacy Hermes Promise wrapper', async () => {
+        const wrappedPals = [
+          {_h: 0, _i: 1, _j: mockImportedPal, _k: null},
+          {
+            _h: 0,
+            _i: 1,
+            _j: {...mockImportedPal, id: 'wrapped-pal-2', name: 'Wrapped Pal'},
+            _k: null,
+          },
+        ];
+        (RNFS.readFile as jest.Mock).mockResolvedValue(
+          JSON.stringify(wrappedPals),
+        );
+
+        const result = await importPals();
+
+        expect(result).toBe(2);
+        expect(palStore.createPal).toHaveBeenCalledTimes(2);
+      });
+
       it('should handle single pal import', async () => {
         (RNFS.readFile as jest.Mock).mockResolvedValue(
           JSON.stringify(mockImportedPal),

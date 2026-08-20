@@ -322,11 +322,33 @@ export const validateImportedPalData = (
   // Check if it's an array or a single object
   if (Array.isArray(data)) {
     // Validate each pal in the array
-    return data.map(pal => validateSinglePal(pal));
+    return data.map(pal => validateSinglePal(unwrapPromiseExport(pal)));
   } else {
     // Validate a single pal
-    return validateSinglePal(data);
+    return validateSinglePal(unwrapPromiseExport(data));
   }
+};
+
+/**
+ * Older "Export all pals" builds accidentally serialized the resolved
+ * Promise wrapper instead of the pal itself. Hermes stored the actual pal in
+ * `_j`, so recover it here to keep those backups importable.
+ */
+const unwrapPromiseExport = (pal: any): any => {
+  if (
+    pal &&
+    typeof pal === 'object' &&
+    !pal.name &&
+    pal._h === 0 &&
+    pal._i === 1 &&
+    pal._j &&
+    typeof pal._j === 'object' &&
+    pal._k === null
+  ) {
+    return pal._j;
+  }
+
+  return pal;
 };
 
 /**

@@ -566,6 +566,14 @@ describe('exportUtils', () => {
         const exportedData = JSON.parse(writeCall[1]);
         expect(Array.isArray(exportedData)).toBe(true);
         expect(exportedData).toHaveLength(2);
+        expect(exportedData.map((pal: any) => pal.name)).toEqual([
+          'Test Pal',
+          'Test Pal 2',
+        ]);
+        expect(exportedData[0]).toMatchObject({
+          version: '2.0',
+          systemPrompt: 'You are a helpful assistant',
+        });
       });
 
       it('should handle empty pals list', async () => {

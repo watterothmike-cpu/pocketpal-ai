@@ -157,7 +157,7 @@ export const exportPal = async (palId: string): Promise<void> => {
 export const exportAllPals = async (): Promise<void> => {
   try {
     const pals = palStore.getPals();
-    const exportData = pals.map(transformExportPal);
+    const exportData = await Promise.all(pals.map(transformExportPal));
 
     const timestamp = format(new Date(), 'yyyy-MM-dd_HH-mm-ss');
     const filename = `all_pals_${timestamp}.json`;
