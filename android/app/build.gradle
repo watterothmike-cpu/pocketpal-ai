@@ -173,6 +173,9 @@ android {
             dimension "distribution"
             applicationIdSuffix ".sammytest"
             versionNameSuffix "-sammy-memory"
+            ndk {
+                abiFilters "arm64-v8a"
+            }
             // Installs side-by-side with the Play Store app. This flavor is
             // only used for Papa Baer's isolated on-device memory test.
         }
