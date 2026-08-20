@@ -1,0 +1,95 @@
+name: Sammy Memory Test APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/sammy-memory-foundation
+    paths:
+      - '.github/workflows/sammy-memory-apk.yml'
+      - 'android/**'
+      - 'src/**'
+      - 'App.tsx'
+      - 'index.js'
+      - 'babel.config.js'
+      - 'package.json'
+      - 'yarn.lock'
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+  JAVA_VERSION: '17'
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Create offline test configuration
+        run: |
+          cat > android/app/google-services.json << 'EOL'
+          {
+            "project_info": {
+              "project_number": "000000000000",
+              "project_id": "sammy-memory-offline-test",
+              "storage_bucket": "sammy-memory-offline-test.invalid"
+            },
+            "client": [{
+              "client_info": {
+                "mobilesdk_app_id": "1:000000000000:android:2222222222222222",
+                "android_client_info": {
+                  "package_name": "com.pocketpalai.sammytest"
+                }
+              },
+              "api_key": [{"current_key": "offline-test-key"}]
+            }]
+          }
+          EOL
+          cat > .env << 'EOL'
+          FIREBASE_FUNCTIONS_URL=https://offline.invalid
+          SUPABASE_URL=https://offline.invalid
+          SUPABASE_ANON_KEY=offline-test-key
+          PALSHUB_API_BASE_URL=https://offline.invalid
+          APP_URL=pocketpal://app
+          ENABLE_PALSHUB_INTEGRATION=false
+          ENABLE_AUTHENTICATION=false
+          ENABLE_OFFLINE_MODE=true
+          GOOGLE_IOS_CLIENT_ID=offline-test
+          GOOGLE_WEB_CLIENT_ID=offline-test
+          EOL
+
+      - name: Build isolated Sammy APK
+        working-directory: android
+        run: ./gradlew assembleSammyRelease
+
+      - name: Rename APK
+        run: |
+          cp android/app/build/outputs/apk/sammy/release/app-sammy-release.apk \
+            PocketPal-Sammy-Memory-Test.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PocketPal-Sammy-Memory-Test
+          path: PocketPal-Sammy-Memory-Test.apk
+          retention-days: 30

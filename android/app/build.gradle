@@ -169,6 +169,13 @@ android {
             dimension "distribution"
             // applicationId stays as defaultConfig: com.pocketpalai
         }
+        sammy {
+            dimension "distribution"
+            applicationIdSuffix ".sammytest"
+            versionNameSuffix "-sammy-memory"
+            // Installs side-by-side with the Play Store app. This flavor is
+            // only used for Papa Baer's isolated on-device memory test.
+        }
         e2e {
             dimension "distribution"
             applicationIdSuffix ".e2e"
@@ -178,7 +185,7 @@ android {
     }
 
     // Keep the variant matrix narrow: only prodDebug, prodRelease,
-    // e2eDebug, and e2eReleaseE2e are valid combinations.
+    // sammyRelease, e2eDebug, and e2eReleaseE2e are valid combinations.
     //   - e2e + release  → unsigned E2E APK nobody asked for; drop it
     //   - prod + releaseE2e → debuggable prod APK that would ship via the
     //     prod applicationId; drop it
@@ -191,6 +198,9 @@ android {
             setIgnore(true)
         }
         if (flavors.contains('prod') && buildType == 'releaseE2e') {
+            setIgnore(true)
+        }
+        if (flavors.contains('sammy') && buildType != 'release') {
             setIgnore(true)
         }
     }
@@ -243,4 +253,3 @@ project.ext.vectoricons = [
 ]
 
 apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
-
