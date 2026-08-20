@@ -1,3 +1,4 @@
 <resources>
+    <!-- Distinguish the isolated memory test from the installed store app. -->
     <string name="app_name">PocketPal Sammy Test</string>
 </resources>
