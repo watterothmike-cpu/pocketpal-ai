@@ -49,7 +49,11 @@ export const ModelNotAvailable = observer(
           {enableVision: true},
         );
       } else {
-        await modelStore.checkSpaceAndDownload(modelToDownload.id);
+        const downloadableModel =
+          modelStore.ensureImportedPalModel(modelToDownload);
+        if (downloadableModel) {
+          await modelStore.checkSpaceAndDownload(downloadableModel.id);
+        }
       }
     };
 

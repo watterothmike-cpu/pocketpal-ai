@@ -1620,6 +1620,41 @@ class ModelStore {
     }
   };
 
+  /**
+   * Register a downloadable model carried by an imported Pal when a fresh app
+   * has not populated that model in its own store yet. Exported models can be
+   * marked as downloaded on the source device, so reset device-local state
+   * before starting the download here.
+   */
+  ensureImportedPalModel = (model: Model): Model | undefined => {
+    const existing = this.models.find(candidate => candidate.id === model.id);
+    if (existing) {
+      return existing;
+    }
+
+    if (
+      !model.downloadUrl ||
+      model.isLocal ||
+      model.origin === ModelOrigin.LOCAL ||
+      model.origin === ModelOrigin.REMOTE
+    ) {
+      return undefined;
+    }
+
+    const registeredModel: Model = {
+      ...model,
+      isDownloaded: false,
+      progress: 0,
+      fullPath: undefined,
+    };
+
+    runInAction(() => {
+      this.models.push(registeredModel);
+    });
+
+    return this.models.find(candidate => candidate.id === model.id);
+  };
+
   cancelDownload = async (modelId: string) => {
     await downloadManager.cancelDownload(modelId);
     const model = this.models.find(m => m.id === modelId);

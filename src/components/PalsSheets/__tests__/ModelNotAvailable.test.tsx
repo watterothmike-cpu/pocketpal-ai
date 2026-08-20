@@ -98,6 +98,40 @@ describe('ModelNotAvailable', () => {
     );
   });
 
+  it('should register a downloadable model carried by an imported pal', () => {
+    const importedModel = {
+      ...basicModel,
+      id: 'author/imported/model.gguf',
+      isDownloaded: true,
+      downloadUrl: 'https://example.com/model.gguf',
+    };
+    modelStore.models = [];
+
+    const {getByText} = render(
+      <ModelNotAvailable
+        model={importedModel}
+        currentlySelectedModel={undefined}
+        closeSheet={mockCloseSheet}
+      />,
+      {withNavigation: true},
+    );
+
+    fireEvent.press(getByText('Download'));
+
+    expect(modelStore.models).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: importedModel.id,
+          isDownloaded: false,
+          progress: 0,
+        }),
+      ]),
+    );
+    expect(modelStore.checkSpaceAndDownload).toHaveBeenCalledWith(
+      importedModel.id,
+    );
+  });
+
   it('should handle HF model download when model has hfModel property', () => {
     const {getByText} = render(
       <ModelNotAvailable

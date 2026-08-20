@@ -57,6 +57,7 @@ class MockModelStore {
   setRemoteModel: jest.Mock;
   lastUsedModelId: any;
   checkSpaceAndDownload: jest.Mock;
+  ensureImportedPalModel: jest.Mock;
   getDownloadProgress: jest.Mock;
   manualReleaseContext: jest.Mock;
   addHFModel: jest.Mock;
@@ -111,6 +112,7 @@ class MockModelStore {
       selectModel: false,
       setRemoteModel: false,
       checkSpaceAndDownload: false,
+      ensureImportedPalModel: false,
       getDownloadProgress: false,
       manualReleaseContext: false,
       addHFModel: false,
@@ -171,6 +173,27 @@ class MockModelStore {
     this.selectModel = jest.fn().mockResolvedValue(Promise.resolve());
     this.setRemoteModel = jest.fn().mockResolvedValue(Promise.resolve());
     this.checkSpaceAndDownload = jest.fn().mockResolvedValue(undefined);
+    this.ensureImportedPalModel = jest
+      .fn()
+      .mockImplementation((model: Model) => {
+        const existing = this.models.find(
+          candidate => candidate.id === model.id,
+        );
+        if (existing) {
+          return existing;
+        }
+        if (!model.downloadUrl || model.isLocal || model.origin === 'local') {
+          return undefined;
+        }
+        const registered = {
+          ...model,
+          isDownloaded: false,
+          progress: 0,
+          fullPath: undefined,
+        };
+        this.models.push(registered);
+        return registered;
+      });
     this.getDownloadProgress = jest.fn();
     this.manualReleaseContext = jest.fn();
     this.addHFModel = jest.fn();
