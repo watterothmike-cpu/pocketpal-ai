@@ -153,5 +153,33 @@ export default schemaMigrations({
         }),
       ],
     },
+    // Migration to version 9: Add Pal-scoped long-term memory storage
+    {
+      toVersion: 9,
+      steps: [
+        createTable({
+          name: 'pal_memories',
+          columns: [
+            {name: 'pal_id', type: 'string', isIndexed: true},
+            {name: 'kind', type: 'string'},
+            {name: 'status', type: 'string', isIndexed: true},
+            {name: 'content', type: 'string'},
+            {name: 'keywords', type: 'string'}, // JSON stringified string[]
+            {name: 'links', type: 'string'}, // JSON stringified MemoryLink[]
+            {name: 'evidence', type: 'string'}, // JSON stringified MemoryEvidence[]
+            {name: 'source_type', type: 'string'},
+            {name: 'importance', type: 'number'},
+            {name: 'confidence', type: 'number'},
+            {name: 'repetition_count', type: 'number'},
+            {name: 'use_count', type: 'number'},
+            {name: 'last_seen_at', type: 'number'},
+            {name: 'last_used_at', type: 'number', isOptional: true},
+            {name: 'supersedes_id', type: 'string', isOptional: true},
+            {name: 'created_at', type: 'number'},
+            {name: 'updated_at', type: 'number'},
+          ],
+        }),
+      ],
+    },
   ],
 });
