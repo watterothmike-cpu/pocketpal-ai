@@ -13,6 +13,7 @@ import {
 
 import {useChatSession} from '../useChatSession';
 import {isReadUrlAllowed} from '../../services/talents';
+import {captureExplicitMemoryFromMessage} from '../../services/memory';
 
 import {
   chatSessionStore,
@@ -26,6 +27,13 @@ import {
 import {l10n} from '../../locales';
 import {assistant} from '../../utils/chat';
 import {ModelOrigin} from '../../utils/types';
+
+jest.mock('../../services/memory', () => ({
+  captureExplicitMemoryFromMessage: jest.fn().mockResolvedValue({
+    captured: false,
+    reason: 'not_explicit',
+  }),
+}));
 
 const mockAssistant = {
   id: 'h3o3lc5xj',
@@ -79,6 +87,39 @@ describe('useChatSession', () => {
 
     expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalled();
     expect(modelStore.context?.completion).toHaveBeenCalled();
+  });
+
+  it('offers a persisted user message to explicit memory capture', async () => {
+    const pal = {
+      id: 'sammy',
+      capabilities: {memory: true},
+      pact: {talents: []},
+    } as any;
+    palStore.pals = [pal];
+    chatSessionStore.sessions = [
+      {...sessionFixtures[0], activePalId: 'sammy'},
+    ] as any;
+    const explicitMessage = {
+      ...textMessage,
+      text: 'Merk dir: Harry kennt Papa Bär.',
+    };
+    const {result} = renderHook(() =>
+      useChatSession({current: null}, textMessage.author, mockAssistant),
+    );
+
+    await act(async () => {
+      await result.current.handleSendPress(explicitMessage);
+    });
+
+    expect(captureExplicitMemoryFromMessage).toHaveBeenCalledWith({
+      pal,
+      sessionId: 'session-1',
+      message: expect.objectContaining({
+        id: '',
+        text: 'Merk dir: Harry kennt Papa Bär.',
+        createdAt: expect.any(Number),
+      }),
+    });
   });
 
   it('should handle model not loaded scenario', async () => {

@@ -47,6 +47,7 @@ import {
   type AgentEvent,
   type AgentUiState,
 } from '../services/agent';
+import {captureExplicitMemoryFromMessage} from '../services/memory';
 // Helper function to prepare completion parameters using OpenAI-compatible
 // messages API. Creates the empty `assistant_turn` row up-front so the
 // active-vs-persisted predicate sees the right "last message" before the
@@ -546,6 +547,43 @@ export const useChatSession = (
       },
     };
     await addMessage(textMessage);
+
+    const activeSession = chatSessionStore.sessions.find(
+      s => s.id === chatSessionStore.activeSessionId,
+    );
+    const pal = activeSession?.activePalId
+      ? palStore.pals.find(p => p.id === activeSession.activePalId)
+      : null;
+    // Existing sessions mutate textMessage.id in addMessageToCurrentSession.
+    // A brand-new session reloads its first message from WatermelonDB instead,
+    // so resolve that persisted row here to keep the memory evidence complete.
+    const persistedUserMessage = activeSession?.messages.find(
+      candidate =>
+        candidate.type === 'text' &&
+        candidate.text === textMessage.text &&
+        candidate.createdAt === textMessage.createdAt &&
+        candidate.author.id === textMessage.author.id,
+    );
+    const memoryMessage = {
+      id: persistedUserMessage?.id || textMessage.id,
+      text: textMessage.text,
+      createdAt: textMessage.createdAt,
+    };
+
+    if (pal && chatSessionStore.activeSessionId) {
+      try {
+        await captureExplicitMemoryFromMessage({
+          pal,
+          sessionId: chatSessionStore.activeSessionId,
+          message: memoryMessage,
+        });
+      } catch (error) {
+        // Memory persistence must never block the conversation. The original
+        // user message remains stored and can be recovered later.
+        console.warn('[useChatSession] Explicit memory capture failed:', error);
+      }
+    }
+
     modelStore.setInferencing(true);
     modelStore.setIsStreaming(false);
     chatSessionStore.setIsGenerating(true);
@@ -555,13 +593,6 @@ export const useChatSession = (
     } catch (error) {
       console.error('Failed to activate keep awake during chat:', error);
     }
-
-    const activeSession = chatSessionStore.sessions.find(
-      s => s.id === chatSessionStore.activeSessionId,
-    );
-    const pal = activeSession?.activePalId
-      ? palStore.pals.find(p => p.id === activeSession.activePalId)
-      : null;
 
     const systemMessages = resolveSystemMessages({
       pal,
