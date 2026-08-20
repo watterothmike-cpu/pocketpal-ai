@@ -1,7 +1,9 @@
 import type {PalMemoryData} from '../../../types/memory';
 import type {Pal} from '../../../types/pal';
 import {
+  applyExplicitMemoryCommandFromMessage,
   captureExplicitMemoryFromMessage,
+  parseExplicitForgetCommand,
   parseExplicitMemoryCommand,
 } from '../explicitMemoryCapture';
 
@@ -70,6 +72,18 @@ describe('parseExplicitMemoryCommand', () => {
       expect(parseExplicitMemoryCommand(input)).toBeNull();
     },
   );
+});
+
+describe('parseExplicitForgetCommand', () => {
+  it('extracts an explicit forget command', () => {
+    expect(parseExplicitForgetCommand('Vergiss: Harry kennt Papa Bär.')).toBe(
+      'Harry kennt Papa Bär.',
+    );
+  });
+
+  it('rejects an empty forget command', () => {
+    expect(parseExplicitForgetCommand('Bitte vergiss:')).toBeNull();
+  });
 });
 
 describe('captureExplicitMemoryFromMessage', () => {
@@ -158,5 +172,49 @@ describe('captureExplicitMemoryFromMessage', () => {
         },
       ],
     });
+  });
+});
+
+describe('applyExplicitMemoryCommandFromMessage', () => {
+  it('archives an exact active memory instead of deleting its history', async () => {
+    const existing = makeMemory();
+    const repository = makeRepository([existing]);
+
+    const result = await applyExplicitMemoryCommandFromMessage(
+      {
+        pal: sammy,
+        sessionId: 'session-2',
+        message: {...message, text: 'Vergiss: harry kennt papa bär'},
+      },
+      repository,
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({handled: true, action: 'archived'}),
+    );
+    expect(repository.updateMemory).toHaveBeenCalledWith('memory-1', {
+      status: 'archived',
+      lastSeenAt: 500,
+    });
+  });
+
+  it('does not guess when a forget command has no exact match', async () => {
+    const repository = makeRepository([makeMemory()]);
+
+    const result = await applyExplicitMemoryCommandFromMessage(
+      {
+        pal: sammy,
+        sessionId: 'session-2',
+        message: {...message, text: 'Vergiss: irgendetwas über Harry'},
+      },
+      repository,
+    );
+
+    expect(result).toEqual({
+      handled: true,
+      action: 'not_found',
+      memories: [],
+    });
+    expect(repository.updateMemory).not.toHaveBeenCalled();
   });
 });

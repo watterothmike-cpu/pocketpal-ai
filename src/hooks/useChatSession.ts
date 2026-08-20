@@ -47,7 +47,12 @@ import {
   type AgentEvent,
   type AgentUiState,
 } from '../services/agent';
-import {captureExplicitMemoryFromMessage} from '../services/memory';
+import {
+  applyExplicitMemoryCommandFromMessage,
+  buildMemoryContext,
+  markMemoryContextUsed,
+  observeMemoryCandidateFromMessage,
+} from '../services/memory';
 // Helper function to prepare completion parameters using OpenAI-compatible
 // messages API. Creates the empty `assistant_turn` row up-front so the
 // active-vs-persisted predicate sees the right "last message" before the
@@ -62,6 +67,7 @@ const prepareCompletion = async ({
   isMultimodalEnabled,
   l10n,
   currentMessages,
+  memorySystemFragment,
 }: {
   imageUris: string[];
   message: MessageType.PartialText;
@@ -72,6 +78,7 @@ const prepareCompletion = async ({
   isMultimodalEnabled: boolean;
   l10n: any;
   currentMessages: MessageType.Any[];
+  memorySystemFragment?: string;
 }) => {
   const sessionCompletionSettings =
     await chatSessionStore.getCurrentCompletionSettings();
@@ -141,10 +148,11 @@ const prepareCompletion = async ({
     maxToolTurns: DEFAULT_MAX_TURNS,
   });
 
-  const messages = assembleMessages(systemMessages, systemPromptFragments, [
-    ...chatMessages,
-    {role: 'user', content: userMessageContent},
-  ]);
+  const messages = assembleMessages(
+    systemMessages,
+    [memorySystemFragment ?? '', ...systemPromptFragments],
+    [...chatMessages, {role: 'user', content: userMessageContent}],
+  );
 
   // Reseed the read_url exfiltration allowlist for this run; the trust policy
   // (which sources count) lives in the talents module.
@@ -571,16 +579,64 @@ export const useChatSession = (
     };
 
     if (pal && chatSessionStore.activeSessionId) {
+      let explicitCommandHandled = false;
       try {
-        await captureExplicitMemoryFromMessage({
+        const commandResult = await applyExplicitMemoryCommandFromMessage({
           pal,
           sessionId: chatSessionStore.activeSessionId,
           message: memoryMessage,
         });
+        explicitCommandHandled = commandResult.handled;
       } catch (error) {
         // Memory persistence must never block the conversation. The original
         // user message remains stored and can be recovered later.
         console.warn('[useChatSession] Explicit memory capture failed:', error);
+      }
+
+      if (!explicitCommandHandled) {
+        try {
+          await observeMemoryCandidateFromMessage({
+            pal,
+            sessionId: chatSessionStore.activeSessionId,
+            message: memoryMessage,
+          });
+        } catch (error) {
+          console.warn('[useChatSession] Memory observation failed:', error);
+        }
+      }
+    }
+
+    let memoryContext = {
+      text: '',
+      memoryIds: [] as string[],
+      tokenCount: 0,
+      tokenBudget: 0,
+    };
+    if (pal) {
+      try {
+        const llamaContext = modelStore.context;
+        const memoryQuery = [
+          textMessage.text,
+          ...currentMessages
+            .slice(0, 4)
+            .filter(
+              (candidate): candidate is MessageType.Text =>
+                candidate.type === 'text',
+            )
+            .map(candidate => candidate.text),
+        ].join('\n');
+        memoryContext = await buildMemoryContext({
+          pal,
+          query: memoryQuery,
+          contextWindowTokens:
+            modelStore.activeContextSettings?.n_ctx ??
+            modelStore.contextInitParams.n_ctx,
+          countTokens: llamaContext
+            ? async text => (await llamaContext.tokenize(text)).tokens.length
+            : undefined,
+        });
+      } catch (error) {
+        console.warn('[useChatSession] Memory retrieval failed:', error);
       }
     }
 
@@ -609,7 +665,16 @@ export const useChatSession = (
       isMultimodalEnabled,
       l10n,
       currentMessages,
+      memorySystemFragment: memoryContext.text,
     });
+
+    if (memoryContext.memoryIds.length > 0) {
+      try {
+        await markMemoryContextUsed(memoryContext.memoryIds);
+      } catch (error) {
+        console.warn('[useChatSession] Memory usage update failed:', error);
+      }
+    }
 
     currentMessageInfo.current = messageInfo;
 

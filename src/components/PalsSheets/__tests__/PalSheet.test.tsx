@@ -401,6 +401,25 @@ describe('PalSheet', () => {
         );
       });
     });
+
+    it('enables persistent memory without dropping other capabilities', async () => {
+      const {getByText, getByTestId} = renderPalSheet(
+        createBasicPal({capabilities: {video: true}}),
+      );
+
+      fireEvent.changeText(getByTestId('form-field-name'), 'Sammy');
+      fireEvent(getByTestId('memory-capability-switch'), 'valueChange', true);
+      fireEvent.press(getByText('Create'));
+
+      await waitFor(() => {
+        expect(palStore.createPal).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: 'Sammy',
+            capabilities: {video: true, memory: true},
+          }),
+        );
+      });
+    });
   });
 
   describe('Form Submission - Update Existing Pal', () => {

@@ -13,6 +13,7 @@ export interface PalFormData {
   promptGenerationModel?: Model;
   generatingPrompt?: string;
   completionSettings?: Record<string, any>;
+  memoryEnabled: boolean;
   talents?: string[];
   greetingText?: string;
   suggestedPrompts?: string[];

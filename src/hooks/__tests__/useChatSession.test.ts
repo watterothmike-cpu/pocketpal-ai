@@ -13,7 +13,12 @@ import {
 
 import {useChatSession} from '../useChatSession';
 import {isReadUrlAllowed} from '../../services/talents';
-import {captureExplicitMemoryFromMessage} from '../../services/memory';
+import {
+  applyExplicitMemoryCommandFromMessage,
+  buildMemoryContext,
+  markMemoryContextUsed,
+  observeMemoryCandidateFromMessage,
+} from '../../services/memory';
 
 import {
   chatSessionStore,
@@ -29,9 +34,20 @@ import {assistant} from '../../utils/chat';
 import {ModelOrigin} from '../../utils/types';
 
 jest.mock('../../services/memory', () => ({
-  captureExplicitMemoryFromMessage: jest.fn().mockResolvedValue({
-    captured: false,
+  applyExplicitMemoryCommandFromMessage: jest.fn().mockResolvedValue({
+    handled: false,
     reason: 'not_explicit',
+  }),
+  buildMemoryContext: jest.fn().mockResolvedValue({
+    text: '',
+    memoryIds: [],
+    tokenCount: 0,
+    tokenBudget: 0,
+  }),
+  markMemoryContextUsed: jest.fn().mockResolvedValue(undefined),
+  observeMemoryCandidateFromMessage: jest.fn().mockResolvedValue({
+    captured: false,
+    reason: 'not_stable',
   }),
 }));
 
@@ -111,7 +127,7 @@ describe('useChatSession', () => {
       await result.current.handleSendPress(explicitMessage);
     });
 
-    expect(captureExplicitMemoryFromMessage).toHaveBeenCalledWith({
+    expect(applyExplicitMemoryCommandFromMessage).toHaveBeenCalledWith({
       pal,
       sessionId: 'session-1',
       message: expect.objectContaining({
@@ -120,6 +136,109 @@ describe('useChatSession', () => {
         createdAt: expect.any(Number),
       }),
     });
+  });
+
+  it('offers non-command stable statements to conservative observation', async () => {
+    const pal = {
+      id: 'sammy',
+      capabilities: {memory: true},
+      pact: {talents: []},
+    } as any;
+    palStore.pals = [pal];
+    chatSessionStore.sessions = [
+      {...sessionFixtures[0], activePalId: 'sammy'},
+    ] as any;
+    const {result} = renderHook(() =>
+      useChatSession({current: null}, textMessage.author, mockAssistant),
+    );
+
+    await act(async () => {
+      await result.current.handleSendPress({
+        ...textMessage,
+        text: 'Ich mag starken Kaffee.',
+      });
+    });
+
+    expect(observeMemoryCandidateFromMessage).toHaveBeenCalledWith({
+      pal,
+      sessionId: 'session-1',
+      message: expect.objectContaining({
+        text: 'Ich mag starken Kaffee.',
+        createdAt: expect.any(Number),
+      }),
+    });
+  });
+
+  it('does not observe an explicit memory command a second time', async () => {
+    const pal = {
+      id: 'sammy',
+      capabilities: {memory: true},
+      pact: {talents: []},
+    } as any;
+    palStore.pals = [pal];
+    chatSessionStore.sessions = [
+      {...sessionFixtures[0], activePalId: 'sammy'},
+    ] as any;
+    (applyExplicitMemoryCommandFromMessage as jest.Mock).mockResolvedValueOnce({
+      handled: true,
+      action: 'created',
+      memories: [],
+    });
+    const {result} = renderHook(() =>
+      useChatSession({current: null}, textMessage.author, mockAssistant),
+    );
+
+    await act(async () => {
+      await result.current.handleSendPress({
+        ...textMessage,
+        text: 'Merk dir: Ich mag starken Kaffee.',
+      });
+    });
+
+    expect(observeMemoryCandidateFromMessage).not.toHaveBeenCalled();
+  });
+
+  it('injects retrieved memory into the leading system message and marks it used', async () => {
+    const pal = {
+      id: 'sammy',
+      capabilities: {memory: true},
+      pact: {talents: []},
+      systemPrompt: 'Du bist Sammy.',
+      parameters: {},
+    } as any;
+    palStore.pals = [pal];
+    chatSessionStore.sessions = [
+      {...sessionFixtures[0], activePalId: 'sammy'},
+    ] as any;
+    (buildMemoryContext as jest.Mock).mockResolvedValueOnce({
+      text: 'PERSISTENTES GEDÄCHTNIS:\n- Milow ist Papa Bärs Hund.',
+      memoryIds: ['memory-1'],
+      tokenCount: 20,
+      tokenBudget: 160,
+    });
+    const {result} = renderHook(() =>
+      useChatSession({current: null}, textMessage.author, mockAssistant),
+    );
+
+    await act(async () => {
+      await result.current.handleSendPress({
+        ...textMessage,
+        text: 'Wie heißt mein Hund?',
+      });
+    });
+
+    expect(modelStore.context?.completion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messages: expect.arrayContaining([
+          expect.objectContaining({
+            role: 'system',
+            content: expect.stringContaining('Milow ist Papa Bärs Hund.'),
+          }),
+        ]),
+      }),
+      expect.any(Function),
+    );
+    expect(markMemoryContextUsed).toHaveBeenCalledWith(['memory-1']);
   });
 
   it('should handle model not loaded scenario', async () => {

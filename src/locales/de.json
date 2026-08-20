@@ -739,6 +739,11 @@
       "parameters": "Parameter",
       "generationSettings": "Generierungseinstellungen",
       "configureGenerationSettings": "Erzeugungseinstellungen konfigurieren",
+      "memory": {
+        "sectionLabel": "Gedächtnis",
+        "title": "Dauerhaftes Gedächtnis",
+        "description": "Erlaubt diesem Pal, ausdrücklich genannte Erinnerungen zu speichern und später passend abzurufen."
+      },
       "validation": {
         "nameRequired": "Name ist erforderlich",
         "generatingPromptRequired": "Generierender Prompt ist erforderlich bei der Nutzung von AI Prompts",
@@ -885,12 +890,7 @@
         "total": "Insgesamt ",
         "usage": "Verwendung: "
       },
-      "byteSizes": [
-        "Bytes",
-        "KB",
-        "MB",
-        "GB"
-      ]
+      "byteSizes": ["Bytes", "KB", "MB", "GB"]
     },
     "chatView": {
       "menuItems": {

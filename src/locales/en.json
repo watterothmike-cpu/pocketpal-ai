@@ -841,6 +841,11 @@
       "parameters": "Parameters",
       "generationSettings": "Generation Settings",
       "configureGenerationSettings": "Configure Generation Settings",
+      "memory": {
+        "sectionLabel": "Memory",
+        "title": "Persistent memory",
+        "description": "Allow this Pal to save explicit memories and recall relevant ones in later chats."
+      },
       "validation": {
         "nameRequired": "Name is required",
         "generatingPromptRequired": "Generating prompt is required when using AI prompt",

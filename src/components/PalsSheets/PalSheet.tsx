@@ -23,6 +23,7 @@ import {ColorSection} from './ColorSection';
 import {TalentSection} from './TalentSection';
 import {ModelSelector} from './ModelSelector';
 import {GreetingSection} from './GreetingSection';
+import {MemorySection} from './MemorySection';
 import {SectionDivider} from './SectionDivider';
 import {ModelNotAvailable} from './ModelNotAvailable';
 import {SystemPromptSection} from './SystemPromptSection';
@@ -55,6 +56,7 @@ const INITIAL_STATE: PalFormData = {
   promptGenerationModel: undefined,
   generatingPrompt: '',
   completionSettings: undefined,
+  memoryEnabled: false,
   talents: [],
   greetingText: '',
   suggestedPrompts: [],
@@ -105,6 +107,7 @@ export const PalSheet: React.FC<PalSheetProps> = observer(
         promptGenerationModel: z.any().optional(),
         generatingPrompt: z.string().nullable().optional(),
         completionSettings: z.record(z.string(), z.any()).optional(),
+        memoryEnabled: z.boolean(),
         talents: z.array(z.string()).optional(),
         greetingText: z.string().optional(),
         suggestedPrompts: z.array(z.string()).optional(),
@@ -162,6 +165,7 @@ export const PalSheet: React.FC<PalSheetProps> = observer(
         promptGenerationModel: pal.promptGenerationModel,
         generatingPrompt: pal.generatingPrompt || '',
         completionSettings: pal.completionSettings,
+        memoryEnabled: pal.capabilities?.memory === true,
         talents: pal.pact?.talents?.map(t => t.name) ?? [],
         greetingText: pal.greeting?.text ?? '',
         suggestedPrompts: pal.greeting?.suggestedPrompts ?? [],
@@ -184,6 +188,7 @@ export const PalSheet: React.FC<PalSheetProps> = observer(
         promptGenerationModel: pal.promptGenerationModel,
         generatingPrompt: pal.generatingPrompt || '',
         completionSettings: pal.completionSettings,
+        memoryEnabled: pal.capabilities?.memory === true,
         talents: pal.pact?.talents?.map(t => t.name) ?? [],
         greetingText: pal.greeting?.text ?? '',
         suggestedPrompts: pal.greeting?.suggestedPrompts ?? [],
@@ -275,6 +280,12 @@ export const PalSheet: React.FC<PalSheetProps> = observer(
             ? {text: greetingText, suggestedPrompts: cleanedPrompts}
             : {text: greetingText}
           : {text: '', suggestedPrompts: []};
+        const capabilities = {...(pal.capabilities ?? {})};
+        if (data.memoryEnabled) {
+          capabilities.memory = true;
+        } else {
+          delete capabilities.memory;
+        }
 
         // Create pal data
         // For updates, if we don't set values, it will preserve the original pal's values
@@ -293,7 +304,7 @@ export const PalSheet: React.FC<PalSheetProps> = observer(
           parameters,
           parameterSchema: activeSchema,
           source: pal.source || 'local',
-          capabilities: pal.capabilities || {},
+          capabilities,
           // Include (local) completion settings if they exist
           completionSettings: data.completionSettings,
           pact,
@@ -422,6 +433,8 @@ export const PalSheet: React.FC<PalSheetProps> = observer(
                 />
 
                 <GreetingSection />
+
+                <MemorySection />
 
                 <ColorSection />
 
