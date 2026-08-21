@@ -7,6 +7,7 @@ import {chatSessionRepository} from '../repositories/ChatSessionRepository';
 
 import {randId} from '../utils';
 import {L10nContext} from '../utils';
+import {t as interpolate} from '../locales';
 import {
   chatSessionStore,
   modelStore,
@@ -587,6 +588,19 @@ export const useChatSession = (
           message: memoryMessage,
         });
         explicitCommandHandled = commandResult.handled;
+        if (commandResult.handled) {
+          const content = commandResult.memories[0]?.content ?? '';
+          const confirmation =
+            commandResult.action === 'created'
+              ? interpolate(l10n.chat.memorySaved, {content})
+              : commandResult.action === 'reinforced'
+                ? interpolate(l10n.chat.memoryReinforced, {content})
+                : commandResult.action === 'archived'
+                  ? interpolate(l10n.chat.memoryForgotten, {content})
+                  : l10n.chat.memoryNotFound;
+          await addSystemMessage(confirmation, {memoryCommand: true});
+          return;
+        }
       } catch (error) {
         // Memory persistence must never block the conversation. The original
         // user message remains stored and can be recovered later.

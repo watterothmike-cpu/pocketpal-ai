@@ -1187,6 +1187,10 @@
   "chat": {
     "conversationReset": "Conversation reset!",
     "modelNotLoaded": "Model not loaded. Please initialize the model.",
+    "memorySaved": "✓ Saved to persistent memory: {{content}}",
+    "memoryReinforced": "✓ Confirmed in persistent memory: {{content}}",
+    "memoryForgotten": "✓ Removed from active memory: {{content}}",
+    "memoryNotFound": "No matching active memory was found.",
     "completionFailed": "Completion failed: ",
     "toolCallTruncated": "Tool call cut off — the model likely ran out of room. Try a larger context or a smaller request.",
     "speculativeInitFailed": "This device could not start speculative decoding for this model — most likely there is not enough memory for the draft context. Turn off Speculative decoding under Settings → Advanced Settings and try again.",

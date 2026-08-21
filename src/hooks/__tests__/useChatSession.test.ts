@@ -182,7 +182,7 @@ describe('useChatSession', () => {
     (applyExplicitMemoryCommandFromMessage as jest.Mock).mockResolvedValueOnce({
       handled: true,
       action: 'created',
-      memories: [],
+      memories: [{content: 'Ich mag starken Kaffee.'}],
     });
     const {result} = renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
@@ -196,6 +196,16 @@ describe('useChatSession', () => {
     });
 
     expect(observeMemoryCandidateFromMessage).not.toHaveBeenCalled();
+    expect(modelStore.context?.completion).not.toHaveBeenCalled();
+    expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: '✓ Saved to persistent memory: Ich mag starken Kaffee.',
+        metadata: expect.objectContaining({
+          system: true,
+          memoryCommand: true,
+        }),
+      }),
+    );
   });
 
   it('injects retrieved memory into the leading system message and marks it used', async () => {
