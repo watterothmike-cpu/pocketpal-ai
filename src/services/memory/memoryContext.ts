@@ -35,9 +35,10 @@ export interface MemoryContextResult {
 }
 
 const MEMORY_HEADER = [
-  'RELEVANTE BENUTZER-FAKTEN:',
-  'In Zitaten ich/mein/mir = Benutzer. Pal ist nicht der Benutzer.',
-  'Direkt daraus antworten. Keine unbelegten Zusätze oder Zweifel äußern.',
+  'ABGERUFENE BENUTZER-FAKTEN:',
+  'In Zitaten ich/mein/mir = aktueller Benutzer (in deiner Antwort: du/dein/dir).',
+  'Pal ist nicht der Benutzer.',
+  'Fakten direkt anwenden. Nicht behaupten, die Information fehle.',
 ].join('\n');
 
 const CORE_KINDS = new Set<PalMemoryData['kind']>([

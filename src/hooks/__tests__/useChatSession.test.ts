@@ -211,7 +211,7 @@ describe('useChatSession', () => {
     );
   });
 
-  it('injects retrieved memory into the leading system message and marks it used', async () => {
+  it('places retrieved memory next to the current question and marks it used', async () => {
     const pal = {
       id: 'sammy',
       capabilities: {memory: true},
@@ -243,16 +243,19 @@ describe('useChatSession', () => {
       });
     });
 
-    expect(modelStore.context?.completion).toHaveBeenCalledWith(
-      expect.objectContaining({
-        messages: expect.arrayContaining([
-          expect.objectContaining({
-            role: 'system',
-            content: expect.stringContaining('Milow ist Papa Bärs Hund.'),
-          }),
-        ]),
-      }),
-      expect.any(Function),
+    const completionParams = (modelStore.context?.completion as jest.Mock).mock
+      .calls[0][0] as {messages: Array<{role: string; content: string}>};
+    const systemMessage = completionParams.messages.find(
+      candidate => candidate.role === 'system',
+    );
+    const currentUserMessage = [...completionParams.messages]
+      .reverse()
+      .find(candidate => candidate.role === 'user');
+
+    expect(systemMessage?.content).toBe('Du bist Sammy.');
+    expect(currentUserMessage?.content).toContain('Milow ist Papa Bärs Hund.');
+    expect(currentUserMessage?.content).toContain(
+      'AKTUELLE FRAGE DES BENUTZERS:\nWie heißt mein Hund?',
     );
     expect(markMemoryContextUsed).toHaveBeenCalledWith(['memory-1']);
     expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(

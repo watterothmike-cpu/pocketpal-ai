@@ -68,7 +68,7 @@ const prepareCompletion = async ({
   isMultimodalEnabled,
   l10n,
   currentMessages,
-  memorySystemFragment,
+  memoryContextFragment,
 }: {
   imageUris: string[];
   message: MessageType.PartialText;
@@ -79,7 +79,7 @@ const prepareCompletion = async ({
   isMultimodalEnabled: boolean;
   l10n: any;
   currentMessages: MessageType.Any[];
-  memorySystemFragment?: string;
+  memoryContextFragment?: string;
 }) => {
   const sessionCompletionSettings =
     await chatSessionStore.getCurrentCompletionSettings();
@@ -91,12 +91,15 @@ const prepareCompletion = async ({
   // Create user message content - use array format only for multimodal,
   // string for text-only.
   let userMessageContent: any;
+  const groundedUserText = memoryContextFragment?.trim()
+    ? `${memoryContextFragment}\n\nAKTUELLE FRAGE DES BENUTZERS:\n${message.text}`
+    : message.text;
 
   if (hasImages && isMultimodalEnabled) {
     userMessageContent = [
       {
         type: 'text',
-        text: message.text,
+        text: groundedUserText,
       },
       ...imageUris.map(path => ({
         type: 'image_url',
@@ -104,7 +107,7 @@ const prepareCompletion = async ({
       })),
     ];
   } else {
-    userMessageContent = message.text;
+    userMessageContent = groundedUserText;
 
     if (hasImages && !isMultimodalEnabled) {
       uiStore.setChatWarning(
@@ -151,11 +154,10 @@ const prepareCompletion = async ({
     maxToolTurns: DEFAULT_MAX_TURNS,
   });
 
-  const messages = assembleMessages(
-    systemMessages,
-    [memorySystemFragment ?? '', ...systemPromptFragments],
-    [...chatMessages, {role: 'user', content: userMessageContent}],
-  );
+  const messages = assembleMessages(systemMessages, systemPromptFragments, [
+    ...chatMessages,
+    {role: 'user', content: userMessageContent},
+  ]);
 
   // Reseed the read_url exfiltration allowlist for this run; the trust policy
   // (which sources count) lives in the talents module.
@@ -702,7 +704,7 @@ export const useChatSession = (
       isMultimodalEnabled,
       l10n,
       currentMessages,
-      memorySystemFragment: memoryContext.text,
+      memoryContextFragment: memoryContext.text,
     });
 
     if (memoryContext.memoryIds.length > 0) {
