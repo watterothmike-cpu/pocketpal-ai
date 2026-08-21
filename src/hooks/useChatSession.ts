@@ -92,7 +92,7 @@ const prepareCompletion = async ({
   // string for text-only.
   let userMessageContent: any;
   const groundedUserText = memoryContextFragment?.trim()
-    ? `${memoryContextFragment}\n\nAKTUELLE FRAGE DES BENUTZERS:\n${message.text}`
+    ? `${memoryContextFragment}\n\nFRAGE:\n${message.text}`
     : message.text;
 
   if (hasImages && isMultimodalEnabled) {

@@ -224,7 +224,7 @@ describe('useChatSession', () => {
       {...sessionFixtures[0], activePalId: 'sammy'},
     ] as any;
     (buildMemoryContext as jest.Mock).mockResolvedValueOnce({
-      text: 'PERSISTENTES GEDÄCHTNIS:\n- Milow ist Papa Bärs Hund.',
+      text: 'TATSACHEN FÜR DIE ANTWORT:\n- Milow ist Hund des aktuellen Benutzers.',
       memoryIds: ['memory-1'],
       memoryContents: ['Milow ist Papa Bärs Hund.'],
       tokenCount: 20,
@@ -253,9 +253,8 @@ describe('useChatSession', () => {
       .find(candidate => candidate.role === 'user');
 
     expect(systemMessage?.content).toBe('Du bist Sammy.');
-    expect(currentUserMessage?.content).toContain('Milow ist Papa Bärs Hund.');
-    expect(currentUserMessage?.content).toContain(
-      'AKTUELLE FRAGE DES BENUTZERS:\nWie heißt mein Hund?',
+    expect(currentUserMessage?.content).toBe(
+      'TATSACHEN FÜR DIE ANTWORT:\n- Milow ist Hund des aktuellen Benutzers.\n\nFRAGE:\nWie heißt mein Hund?',
     );
     expect(markMemoryContextUsed).toHaveBeenCalledWith(['memory-1']);
     expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(

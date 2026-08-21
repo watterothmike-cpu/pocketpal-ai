@@ -6,6 +6,7 @@ import {hasMemoryCapability} from '../../utils/pal-capabilities';
 import {
   canonicalizeMemoryContent,
   hasCanonicalMemoryWordOrder,
+  renderMemoryContentForModel,
 } from './memoryNormalization';
 
 type MemoryContextRepository = Pick<
@@ -34,12 +35,7 @@ export interface MemoryContextResult {
   skippedForBudgetCount: number;
 }
 
-const MEMORY_HEADER = [
-  'ABGERUFENE BENUTZER-FAKTEN:',
-  'In Zitaten ich/mein/mir = aktueller Benutzer (in deiner Antwort: du/dein/dir).',
-  'Pal ist nicht der Benutzer.',
-  'Fakten direkt anwenden. Nicht behaupten, die Information fehle.',
-].join('\n');
+const MEMORY_HEADER = 'TATSACHEN FÜR DIE ANTWORT:';
 
 const CORE_KINDS = new Set<PalMemoryData['kind']>([
   'identity',
@@ -259,7 +255,8 @@ export async function buildMemoryContext(
     if (!content) {
       continue;
     }
-    const candidateLines = [...lines, `- „${content}“`];
+    const modelContent = renderMemoryContentForModel(content);
+    const candidateLines = [...lines, `- ${modelContent}`];
     const candidateText = `${MEMORY_HEADER}\n${candidateLines.join('\n')}`;
     const candidateTokens = await countTokens(candidateText);
     if (candidateTokens > tokenBudget) {
