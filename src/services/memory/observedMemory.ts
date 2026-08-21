@@ -8,6 +8,7 @@ import {
   parseExplicitForgetCommand,
   parseExplicitMemoryCommand,
 } from './explicitMemoryCapture';
+import {canonicalizeMemoryContent} from './memoryNormalization';
 
 type ObservedMemoryRepository = Pick<
   MemoryRepository,
@@ -60,15 +61,6 @@ const STABLE_PATTERNS: Array<{kind: MemoryKind; pattern: RegExp}> = [
   },
 ];
 
-function normalizeForComparison(content: string): string {
-  return content
-    .normalize('NFKC')
-    .toLocaleLowerCase('de-DE')
-    .replace(/\s+/gu, ' ')
-    .replace(/[.!?]+$/gu, '')
-    .trim();
-}
-
 export function extractStableObservation(
   messageText: string,
 ): StableObservation | null {
@@ -111,13 +103,13 @@ export async function observeMemoryCandidateFromMessage(
     messageId: input.message.id || undefined,
     observedAt,
   };
-  const normalizedContent = normalizeForComparison(observation.content);
+  const normalizedContent = canonicalizeMemoryContent(observation.content);
   const memories = await repository.getMemoriesForPal(input.pal.id, [
     'candidate',
     'active',
   ]);
   const existing = memories.find(
-    memory => normalizeForComparison(memory.content) === normalizedContent,
+    memory => canonicalizeMemoryContent(memory.content) === normalizedContent,
   );
 
   if (existing) {

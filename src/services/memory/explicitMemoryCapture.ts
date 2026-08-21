@@ -3,6 +3,7 @@ import type MemoryRepository from '../../repositories/MemoryRepository';
 import type {Pal} from '../../types/pal';
 import type {PalMemoryData} from '../../types/memory';
 import {hasMemoryCapability} from '../../utils/pal-capabilities';
+import {canonicalizeMemoryContent} from './memoryNormalization';
 
 type MemoryCaptureRepository = Pick<
   MemoryRepository,
@@ -71,15 +72,6 @@ export function parseExplicitForgetCommand(text: string): string | null {
   return parseCommandPayload(text, EXPLICIT_FORGET_PREFIX);
 }
 
-function normalizeForComparison(content: string): string {
-  return content
-    .normalize('NFKC')
-    .toLocaleLowerCase('de-DE')
-    .replace(/\s+/gu, ' ')
-    .replace(/[.!?]+$/gu, '')
-    .trim();
-}
-
 export async function captureExplicitMemoryFromMessage(
   input: ExplicitMemoryCaptureInput,
   repository: MemoryCaptureRepository = memoryRepository,
@@ -99,13 +91,13 @@ export async function captureExplicitMemoryFromMessage(
     messageId: input.message.id || undefined,
     observedAt,
   };
-  const normalizedContent = normalizeForComparison(content);
+  const normalizedContent = canonicalizeMemoryContent(content);
   const memories = await repository.getMemoriesForPal(input.pal.id, [
     'candidate',
     'active',
   ]);
   const existing = memories.find(
-    memory => normalizeForComparison(memory.content) === normalizedContent,
+    memory => canonicalizeMemoryContent(memory.content) === normalizedContent,
   );
 
   if (existing) {
@@ -148,14 +140,14 @@ export async function applyExplicitMemoryCommandFromMessage(
 
   const forgetContent = parseExplicitForgetCommand(input.message.text);
   if (forgetContent) {
-    const normalizedForgetContent = normalizeForComparison(forgetContent);
+    const normalizedForgetContent = canonicalizeMemoryContent(forgetContent);
     const memories = await repository.getMemoriesForPal(input.pal.id, [
       'candidate',
       'active',
     ]);
     const matches = memories.filter(
       memory =>
-        normalizeForComparison(memory.content) === normalizedForgetContent,
+        canonicalizeMemoryContent(memory.content) === normalizedForgetContent,
     );
     const archived: PalMemoryData[] = [];
 

@@ -173,6 +173,29 @@ describe('captureExplicitMemoryFromMessage', () => {
       ],
     });
   });
+
+  it('reinforces a direct fact when the command uses a subordinate clause', async () => {
+    const existing = makeMemory({content: 'Harry ist mein Freund.'});
+    const repository = makeRepository([existing]);
+
+    const result = await captureExplicitMemoryFromMessage(
+      {
+        pal: sammy,
+        sessionId: 'session-1',
+        message: {...message, text: 'Merk dir, dass Harry mein Freund ist.'},
+      },
+      repository,
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({captured: true, action: 'reinforced'}),
+    );
+    expect(repository.createMemory).not.toHaveBeenCalled();
+    expect(repository.updateMemory).toHaveBeenCalledWith(
+      'memory-1',
+      expect.objectContaining({repetitionCount: 2}),
+    );
+  });
 });
 
 describe('applyExplicitMemoryCommandFromMessage', () => {
