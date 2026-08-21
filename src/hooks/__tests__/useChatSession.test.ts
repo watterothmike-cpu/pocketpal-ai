@@ -41,8 +41,11 @@ jest.mock('../../services/memory', () => ({
   buildMemoryContext: jest.fn().mockResolvedValue({
     text: '',
     memoryIds: [],
+    memoryContents: [],
     tokenCount: 0,
     tokenBudget: 0,
+    matchedMemoryCount: 0,
+    skippedForBudgetCount: 0,
   }),
   markMemoryContextUsed: jest.fn().mockResolvedValue(undefined),
   observeMemoryCandidateFromMessage: jest.fn().mockResolvedValue({
@@ -223,8 +226,11 @@ describe('useChatSession', () => {
     (buildMemoryContext as jest.Mock).mockResolvedValueOnce({
       text: 'PERSISTENTES GEDÄCHTNIS:\n- Milow ist Papa Bärs Hund.',
       memoryIds: ['memory-1'],
+      memoryContents: ['Milow ist Papa Bärs Hund.'],
       tokenCount: 20,
       tokenBudget: 160,
+      matchedMemoryCount: 1,
+      skippedForBudgetCount: 0,
     });
     const {result} = renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
@@ -249,6 +255,15 @@ describe('useChatSession', () => {
       expect.any(Function),
     );
     expect(markMemoryContextUsed).toHaveBeenCalledWith(['memory-1']);
+    expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: '→ Memory supplied to model: Milow ist Papa Bärs Hund.',
+        metadata: expect.objectContaining({
+          system: true,
+          memoryRecall: true,
+        }),
+      }),
+    );
   });
 
   it('should handle model not loaded scenario', async () => {

@@ -119,7 +119,9 @@ const prepareCompletion = async ({
   // message). AssistantTurn rows pass through to convertToChatMessages,
   // which expands each step into assistant + tool API messages.
   let chatMessages = convertToChatMessages(
-    currentMessages.filter(msg => msg.type !== 'image'),
+    currentMessages.filter(
+      msg => msg.type !== 'image' && msg.metadata?.memoryRecall !== true,
+    ),
     isMultimodalEnabled,
   );
 
@@ -623,9 +625,13 @@ export const useChatSession = (
     let memoryContext = {
       text: '',
       memoryIds: [] as string[],
+      memoryContents: [] as string[],
       tokenCount: 0,
       tokenBudget: 0,
+      matchedMemoryCount: 0,
+      skippedForBudgetCount: 0,
     };
+    let memoryRetrievalFailed = false;
     if (pal) {
       try {
         const llamaContext = modelStore.context;
@@ -650,8 +656,25 @@ export const useChatSession = (
             : undefined,
         });
       } catch (error) {
+        memoryRetrievalFailed = true;
         console.warn('[useChatSession] Memory retrieval failed:', error);
       }
+    }
+
+    if (pal?.capabilities?.memory === true) {
+      const preview = memoryContext.memoryContents
+        .slice(0, 2)
+        .map(content => content.slice(0, 180))
+        .join(' | ');
+      const diagnostic = memoryRetrievalFailed
+        ? l10n.chat.memoryRecallFailed
+        : memoryContext.memoryIds.length > 0
+          ? interpolate(l10n.chat.memoryRecallFound, {content: preview})
+          : memoryContext.matchedMemoryCount > 0 &&
+              memoryContext.skippedForBudgetCount > 0
+            ? l10n.chat.memoryRecallBudgetExceeded
+            : l10n.chat.memoryRecallNone;
+      await addSystemMessage(diagnostic, {memoryRecall: true});
     }
 
     modelStore.setInferencing(true);
